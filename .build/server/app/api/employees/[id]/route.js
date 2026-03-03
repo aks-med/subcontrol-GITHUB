@@ -1,0 +1,52 @@
+"use strict";(()=>{var e={};e.id=957,e.ids=[957],e.modules={72934:e=>{e.exports=require("next/dist/client/components/action-async-storage.external.js")},54580:e=>{e.exports=require("next/dist/client/components/request-async-storage.external.js")},45869:e=>{e.exports=require("next/dist/client/components/static-generation-async-storage.external.js")},20399:e=>{e.exports=require("next/dist/compiled/next-server/app-page.runtime.prod.js")},30517:e=>{e.exports=require("next/dist/compiled/next-server/app-route.runtime.prod.js")},27790:e=>{e.exports=require("assert")},78893:e=>{e.exports=require("buffer")},84770:e=>{e.exports=require("crypto")},17702:e=>{e.exports=require("events")},32615:e=>{e.exports=require("http")},35240:e=>{e.exports=require("https")},86624:e=>{e.exports=require("querystring")},17360:e=>{e.exports=require("url")},21764:e=>{e.exports=require("util")},71568:e=>{e.exports=require("zlib")},89131:(e,t,r)=>{r.r(t),r.d(t,{originalPathname:()=>b,patchFetch:()=>v,requestAsyncStorage:()=>y,routeModule:()=>f,serverHooks:()=>$,staticGenerationAsyncStorage:()=>h});var o={};r.r(o),r.d(o,{DELETE:()=>g,PUT:()=>x,dynamic:()=>u});var n=r(79182),i=r(72007),a=r(56719),s=r(93442),l=r(57978),d=r(11826),p=r(35970),c=r(64761);let u="force-dynamic";async function m(e,t,r,o,n){try{let i="add"===e?"\uD83D\uDFE2":"\uD83D\uDD34",a="add"===e?"Adicionou":"Removeu",s=(0,c.R4)(t.cnpj),l=`
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #1e3a5f; border-bottom: 3px solid #22c55e; padding-bottom: 15px;">
+          ${i} Movimenta\xe7\xe3o de Colaboradores
+        </h2>
+        
+        <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;">
+          <h3 style="margin: 0 0 10px 0; color: #334155;">${t.name}</h3>
+          <p style="margin: 5px 0; color: #64748b;">CNPJ: ${s}</p>
+        </div>
+
+        <div style="background: ${"add"===e?"#dcfce7":"#fee2e2"}; padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid ${"add"===e?"#22c55e":"#ef4444"};">
+          <p style="margin: 0; font-size: 18px; font-weight: bold; color: ${"add"===e?"#166534":"#dc2626"};">
+            ${"add"===e?"✅":"❌"} ${a} ${r} colaborador${r>1?"es":""}
+          </p>
+        </div>
+
+        <div style="background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin: 20px 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+                <strong>💵 ${"add"===e?"Aumento":"Redu\xe7\xe3o"}:</strong>
+              </td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: right; color: ${"add"===e?"#166534":"#dc2626"};">
+                ${"add"===e?"+":"-"}${(0,c.xG)(r*o)} (${r} \xd7 ${(0,c.xG)(o)})
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0;">
+                <strong>📊 Novo valor do boleto:</strong>
+              </td>
+              <td style="padding: 10px 0; text-align: right; font-size: 18px; font-weight: bold; color: #1e3a5f;">
+                ${(0,c.xG)(n*o)}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; border-top: 1px solid #e2e8f0;">
+                <strong>👥 Total de colaboradores ativos:</strong>
+              </td>
+              <td style="padding: 10px 0; border-top: 1px solid #e2e8f0; text-align: right;">
+                ${n}
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 30px;">
+          Notifica\xe7\xe3o autom\xe1tica - Akius Med Gest\xe3o<br>
+          ${new Date().toLocaleString("pt-BR")}
+        </p>
+      </div>
+    `,d="add"===e?process.env.NOTIF_ID_INCLUSO_DE_COLABORADORES:process.env.NOTIF_ID_EXCLUSO_DE_COLABORADORES;await fetch("https://apps.abacus.ai/api/sendNotificationEmail",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deployment_token:process.env.ABACUSAI_API_KEY,app_id:process.env.WEB_APP_ID,notification_id:d,subject:`${i} ${t.name} - ${a} ${r} colaborador${r>1?"es":""}`,body:l,is_html:!0,recipient_email:"financeiro@akiusmedbeneficios.com",sender_alias:"Akius Med Gest\xe3o"})})}catch(e){console.error("Error sending notification:",e)}}async function x(e,{params:t}){try{let r=await (0,l.getServerSession)(d.L);if(!r)return s.NextResponse.json({error:"N\xe3o autorizado"},{status:401});let o=r.user?.role,n=r.user?.id,i=await p._.employee.findUnique({where:{id:t.id}});if(!i)return s.NextResponse.json({error:"Colaborador n\xe3o encontrado"},{status:404});if("client"===o&&i.companyId!==n)return s.NextResponse.json({error:"N\xe3o autorizado"},{status:401});let{tipo:a,nome:u,cpf:m,dataNascimento:x,genero:g,email:f,telefone:y,vigencia:h,titularId:$}=await e.json();if(m){let e=(0,c.HK)(m);if(!(0,c.pM)(e))return s.NextResponse.json({error:"CPF inv\xe1lido"},{status:400})}if("dependente"===a&&$&&await p._.employee.count({where:{titularId:$,active:!0,id:{not:t.id}}})>=3)return s.NextResponse.json({error:"O titular j\xe1 possui 3 dependentes (limite m\xe1ximo)"},{status:400});let b=await p._.employee.update({where:{id:t.id},data:{...a&&{tipo:a},...u&&{nome:u},...m&&{cpf:(0,c.HK)(m)},...x&&{dataNascimento:new Date(x)},...g&&{genero:g},...void 0!==f&&{email:f||null},...void 0!==y&&{telefone:y?(0,c.Xl)(y):null},...h&&{vigencia:new Date(h)},...void 0!==$&&{titularId:"dependente"===a?$:null}}});return s.NextResponse.json(b)}catch(e){return console.error("Error updating employee:",e),s.NextResponse.json({error:"Erro ao atualizar colaborador"},{status:500})}}async function g(e,{params:t}){try{let e=await (0,l.getServerSession)(d.L);if(!e)return s.NextResponse.json({error:"N\xe3o autorizado"},{status:401});let r=e.user?.role,o=e.user?.id,n=await p._.employee.findUnique({where:{id:t.id},include:{company:!0}});if(!n)return s.NextResponse.json({error:"Colaborador n\xe3o encontrado"},{status:404});if("client"===r&&n.companyId!==o)return s.NextResponse.json({error:"N\xe3o autorizado"},{status:401});let i="admin"===r?"admin":"company";await p._.employee.update({where:{id:t.id},data:{active:!1,deletedAt:new Date,deletedBy:i}});let a=await p._.employee.count({where:{companyId:n.companyId,active:!0}});return await p._.notification.create({data:{type:"exclusion",title:`Colaborador exclu\xeddo`,message:`${n.nome} foi exclu\xeddo da empresa ${n.company.name} por ${"admin"===i?"Administrador":"Empresa"}`,employeeId:n.id,companyId:n.companyId,companyName:n.company.name}}),await m("remove",n.company,1,n.company.valorPorVida,a),s.NextResponse.json({success:!0})}catch(e){return console.error("Error deleting employee:",e),s.NextResponse.json({error:"Erro ao remover colaborador"},{status:500})}}let f=new n.AppRouteRouteModule({definition:{kind:i.x.APP_ROUTE,page:"/api/employees/[id]/route",pathname:"/api/employees/[id]",filename:"route",bundlePath:"app/api/employees/[id]/route"},resolvedPagePath:"/home/ubuntu/akius_med_gestao/nextjs_space/app/api/employees/[id]/route.ts",nextConfigOutput:"",userland:o}),{requestAsyncStorage:y,staticGenerationAsyncStorage:h,serverHooks:$}=f,b="/api/employees/[id]/route";function v(){return(0,a.patchFetch)({serverHooks:$,staticGenerationAsyncStorage:h})}},11826:(e,t,r)=>{r.d(t,{L:()=>s});var o=r(66291),n=r(35970),i=r(3390),a=r.n(i);let s={providers:[(0,o.Z)({id:"admin-login",name:"Admin Login",credentials:{email:{label:"Email",type:"email"},password:{label:"Password",type:"password"}},async authorize(e){if(!e?.email||!e?.password)return null;let t=await n._.user.findUnique({where:{email:e.email}});return t&&await a().compare(e.password,t.password)?{id:t.id,email:t.email,name:t.name,role:"admin"}:null}}),(0,o.Z)({id:"client-login",name:"Client Login",credentials:{cnpj:{label:"CNPJ",type:"text"}},async authorize(e){if(!e?.cnpj)return null;let t=e.cnpj.replace(/\D/g,""),r=await n._.company.findUnique({where:{cnpj:t}});return r&&r.active?{id:r.id,email:r.cnpj,name:r.name,role:"client"}:null}})],callbacks:{jwt:async({token:e,user:t})=>(t&&(e.role=t.role??"client",e.id=t.id),e),session:async({session:e,token:t})=>(e?.user&&(e.user.role=t.role,e.user.id=t.id),e)},pages:{signIn:"/"},session:{strategy:"jwt"},secret:process.env.NEXTAUTH_SECRET}},35970:(e,t,r)=>{r.d(t,{_:()=>n});let o=require("@prisma/client"),n=globalThis.prisma??new o.PrismaClient},64761:(e,t,r)=>{function o(e){let t=e?.replace(/\D/g,"")??"";return t.length<=3?t:t.length<=6?`${t.slice(0,3)}.${t.slice(3)}`:t.length<=9?`${t.slice(0,3)}.${t.slice(3,6)}.${t.slice(6)}`:`${t.slice(0,3)}.${t.slice(3,6)}.${t.slice(6,9)}-${t.slice(9,11)}`}function n(e){let t=e?.replace(/\D/g,"")??"";return t.length<=2?t:t.length<=5?`${t.slice(0,2)}.${t.slice(2)}`:t.length<=8?`${t.slice(0,2)}.${t.slice(2,5)}.${t.slice(5)}`:t.length<=12?`${t.slice(0,2)}.${t.slice(2,5)}.${t.slice(5,8)}/${t.slice(8)}`:`${t.slice(0,2)}.${t.slice(2,5)}.${t.slice(5,8)}/${t.slice(8,12)}-${t.slice(12,14)}`}function i(e){let t=e?.replace(/\D/g,"")??"";return t.length<=2?`(${t}`:t.length<=6?`(${t.slice(0,2)}) ${t.slice(2)}`:t.length<=10?`(${t.slice(0,2)}) ${t.slice(2,6)}-${t.slice(6)}`:`(${t.slice(0,2)}) ${t.slice(2,7)}-${t.slice(7,11)}`}function a(e){return new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(e)}function s(e){let t=e?.replace(/\D/g,"")??"";if(11!==t.length||/^(\d)\1{10}$/.test(t))return!1;let r=0;for(let e=0;e<9;e++)r+=parseInt(t.charAt(e))*(10-e);let o=11-r%11;if(o>9&&(o=0),o!==parseInt(t.charAt(9)))return!1;r=0;for(let e=0;e<10;e++)r+=parseInt(t.charAt(e))*(11-e);return(o=11-r%11)>9&&(o=0),o===parseInt(t.charAt(10))}function l(e){let t=e?.replace(/\D/g,"")??"";if(14!==t.length||/^(\d)\1{13}$/.test(t))return!1;let r=[5,4,3,2,9,8,7,6,5,4,3,2],o=[6,5,4,3,2,9,8,7,6,5,4,3,2],n=0;for(let e=0;e<12;e++)n+=parseInt(t.charAt(e))*r[e];let i=n%11;if((i=i<2?0:11-i)!==parseInt(t.charAt(12)))return!1;n=0;for(let e=0;e<13;e++)n+=parseInt(t.charAt(e))*o[e];return(i=(i=n%11)<2?0:11-i)===parseInt(t.charAt(13))}function d(e){return e?.replace(/\D/g,"")??""}function p(e){return e?.replace(/\D/g,"")??""}function c(e){return e?.replace(/\D/g,"")??""}r.d(t,{CN:()=>i,Cz:()=>o,HK:()=>d,R4:()=>n,Uv:()=>p,VD:()=>l,Xl:()=>c,pM:()=>s,xG:()=>a})}};var t=require("../../../../webpack-runtime.js");t.C(e);var r=e=>t(t.s=e),o=t.X(0,[372,364,442,990],()=>r(89131));module.exports=o})();

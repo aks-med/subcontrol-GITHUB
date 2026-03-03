@@ -1,0 +1,70 @@
+generator client {
+    provider      = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output        = "../node_modules/.prisma/client"
+}
+
+datasource db {
+    provider  = "postgresql"
+    url       = env("DATABASE_URL")
+    directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Company {
+  id           String     @id @default(cuid())
+  name         String
+  cnpj         String     @unique
+  valorPorVida Float      @default(0)
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  employees    Employee[]
+}
+
+model Employee {
+  id             String    @id @default(cuid())
+  companyId      String
+  company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tipo           String    // "titular" or "dependente"
+  nome           String
+  cpf            String
+  dataNascimento DateTime
+  genero         String?   // "masculino", "feminino", "outro" - opcional
+  email          String?
+  telefone       String?
+  vigencia       DateTime
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime? // Data de exclusão/inativação
+  deletedBy      String?   // "admin" ou "company" - quem excluiu
+  titularId      String?   // ID do titular (para dependentes)
+  titular        Employee? @relation("TitularDependentes", fields: [titularId], references: [id])
+  dependentes    Employee[] @relation("TitularDependentes")
+
+  @@index([companyId])
+  @@index([cpf])
+  @@index([titularId])
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  type        String   // "inclusion", "exclusion"
+  title       String
+  message     String
+  employeeId  String?
+  companyId   String?
+  companyName String?
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
