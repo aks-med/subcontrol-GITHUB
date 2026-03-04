@@ -51,16 +51,20 @@ export default function ColaboradoresAdminPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [companyFilter, setCompanyFilter] = useState('');
+  const [sortOption, setSortOption] = useState('name_asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [currentInactivePage, setCurrentInactivePage] = useState(1);
+  const itemsPerPage = 50;
   const [showInactive, setShowInactive] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  
+
   // Form states
   const [formOpen, setFormOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [selectedCompanyForForm, setSelectedCompanyForForm] = useState<string>('');
-  
+
   // Filtro de período
   const [filterType, setFilterType] = useState<'all' | 'month' | 'custom'>('all');
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -99,12 +103,12 @@ export default function ColaboradoresAdminPage() {
         fetch('/api/employees'),
         fetch('/api/employees?includeInactive=true')
       ]);
-      
+
       if (activeRes.ok) {
         const data = await activeRes.json();
         setEmployees(data.filter((e: Employee) => e.active));
       }
-      
+
       if (inactiveRes.ok) {
         const data = await inactiveRes.json();
         setInactiveEmployees(data.filter((e: Employee) => !e.active));
@@ -130,7 +134,7 @@ export default function ColaboradoresAdminPage() {
 
   const handleDelete = async () => {
     if (!employeeToDelete) return;
-    
+
     setDeleteLoading(true);
     try {
       const response = await fetch(`/api/employees/${employeeToDelete.id}`, {
@@ -159,17 +163,17 @@ export default function ColaboradoresAdminPage() {
   // Filtrar por período
   const filterByPeriod = (emp: Employee, useCreatedAt: boolean = true) => {
     if (filterType === 'all') return true;
-    
+
     const dateStr = useCreatedAt ? emp.createdAt : emp.deletedAt;
     if (!dateStr) return false;
-    
+
     const date = new Date(dateStr);
-    
+
     if (filterType === 'month' && selectedMonth) {
       const [year, month] = selectedMonth.split('-').map(Number);
       return date.getFullYear() === year && date.getMonth() === month - 1;
     }
-    
+
     if (filterType === 'custom' && startDate && endDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
@@ -177,14 +181,14 @@ export default function ColaboradoresAdminPage() {
       end.setHours(23, 59, 59, 999);
       return date >= start && date <= end;
     }
-    
+
     return true;
   };
 
   // Filtrar colaboradores
   const filterEmployees = (emps: Employee[], useCreatedAt: boolean = true) => {
     return emps.filter((emp) => {
-      const matchesSearch = 
+      const matchesSearch =
         emp.nome?.toLowerCase().includes(search.toLowerCase()) ||
         emp.cpf?.includes(search.replace(/\D/g, '')) ||
         emp.company?.name?.toLowerCase().includes(search.toLowerCase());
@@ -198,7 +202,7 @@ export default function ColaboradoresAdminPage() {
   const getMovimentacao = () => {
     const entradas = filterEmployees(employees, true).length;
     const saidas = inactiveEmployees.filter(emp => {
-      const matchesSearch = 
+      const matchesSearch =
         emp.nome?.toLowerCase().includes(search.toLowerCase()) ||
         emp.cpf?.includes(search.replace(/\D/g, '')) ||
         emp.company?.name?.toLowerCase().includes(search.toLowerCase());
@@ -213,7 +217,7 @@ export default function ColaboradoresAdminPage() {
 
   const filteredEmployees = filterEmployees(employees);
   const filteredInactive = filterEmployees(inactiveEmployees, false);
-  
+
   // Gerar lista de meses (últimos 12 meses)
   const generateMonthOptions = () => {
     const months = [];
@@ -237,9 +241,17 @@ export default function ColaboradoresAdminPage() {
   const organizeEmployees = (emps: Employee[]) => {
     const titulares = emps.filter(e => e.tipo === 'titular');
     const dependentes = emps.filter(e => e.tipo === 'dependente');
-    
+
+    titulares.sort((a, b) => {
+      if (sortOption === 'name_asc') return a.nome.localeCompare(b.nome);
+      if (sortOption === 'name_desc') return b.nome.localeCompare(a.nome);
+      if (sortOption === 'date_desc') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (sortOption === 'date_asc') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return 0;
+    });
+
     const organized: (Employee & { isDependent?: boolean })[] = [];
-    
+
     titulares.forEach(titular => {
       organized.push(titular);
       // Adicionar dependentes deste titular
@@ -248,18 +260,34 @@ export default function ColaboradoresAdminPage() {
         organized.push({ ...dep, isDependent: true });
       });
     });
-    
+
     // Adicionar dependentes órfãos (sem titular válido)
     const orphanDeps = dependentes.filter(d => !titulares.find(t => t.id === d.titularId));
     orphanDeps.forEach(dep => {
       organized.push({ ...dep, isDependent: true });
     });
-    
+
     return organized;
   };
 
   const organizedEmployees = organizeEmployees(filteredEmployees);
+  const totalPages = Math.ceil(organizedEmployees.length / itemsPerPage);
+  const paginatedEmployees = organizedEmployees.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const organizedInactive = organizeEmployees(filteredInactive);
+  const totalInactivePages = Math.ceil(organizedInactive.length / itemsPerPage);
+  const paginatedInactive = organizedInactive.slice(
+    (currentInactivePage - 1) * itemsPerPage,
+    currentInactivePage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setCurrentInactivePage(1);
+  }, [search, companyFilter, filterType, selectedMonth, startDate, endDate, sortOption]);
 
   const isNew = (createdAt: string) => {
     const created = new Date(createdAt);
@@ -312,7 +340,7 @@ export default function ColaboradoresAdminPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <AdminHeader />
-      
+
       <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
           <div>
@@ -320,12 +348,12 @@ export default function ColaboradoresAdminPage() {
             <p className="text-sm sm:text-base text-gray-600">Todos os colaboradores de todas as empresas</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <button 
+            <button
               onClick={() => {
                 setEditingEmployee(null);
                 setSelectedCompanyForForm('');
                 setFormOpen(true);
-              }} 
+              }}
               className="btn-accent flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               <UserPlus className="w-5 h-5" />
@@ -369,7 +397,7 @@ export default function ColaboradoresAdminPage() {
 
         {/* Filters */}
         <div className="card mb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -393,6 +421,18 @@ export default function ColaboradoresAdminPage() {
                     {company.name}
                   </option>
                 ))}
+              </select>
+            </div>
+            <div className="relative">
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                className="input-field"
+              >
+                <option value="name_asc">Ordem Alfabética (A-Z)</option>
+                <option value="name_desc">Ordem Alfabética (Z-A)</option>
+                <option value="date_desc">Data de Inclusão (Mais recentes)</option>
+                <option value="date_asc">Data de Inclusão (Mais antigos)</option>
               </select>
             </div>
           </div>
@@ -419,31 +459,28 @@ export default function ColaboradoresAdminPage() {
                 <div className="flex flex-wrap gap-2 mb-4">
                   <button
                     onClick={() => setFilterType('all')}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                      filterType === 'all'
-                        ? 'bg-[#00552B] text-white'
-                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterType === 'all'
+                      ? 'bg-[#00552B] text-white'
+                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
                   >
                     Todos
                   </button>
                   <button
                     onClick={() => setFilterType('month')}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                      filterType === 'month'
-                        ? 'bg-[#00552B] text-white'
-                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterType === 'month'
+                      ? 'bg-[#00552B] text-white'
+                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
                   >
                     Por Mês
                   </button>
                   <button
                     onClick={() => setFilterType('custom')}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                      filterType === 'custom'
-                        ? 'bg-[#00552B] text-white'
-                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterType === 'custom'
+                      ? 'bg-[#00552B] text-white'
+                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
                   >
                     Período Personalizado
                   </button>
@@ -521,178 +558,204 @@ export default function ColaboradoresAdminPage() {
             <Users className="w-5 h-5 text-[#009A11]" />
             Colaboradores Ativos ({filteredEmployees.length})
           </h3>
-          
-          {/* Mobile: Cards view */}
-          <div className="sm:hidden space-y-3">
-            {organizedEmployees.map((emp: any) => (
-              <div
-                key={emp.id}
-                className={`p-3 rounded-lg border ${
-                  emp.isDependent ? 'bg-gray-50 ml-4 border-gray-200' : 'bg-white border-gray-200'
-                }`}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      {emp.isDependent && <span className="text-gray-400">└</span>}
-                      <p className="font-medium text-sm">{emp.nome}</p>
-                      {isNew(emp.createdAt) && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 text-green-700 rounded-full animate-pulse">
-                          NOVO
-                        </span>
+
+          <div className="max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+            {/* Mobile: Cards view */}
+            <div className="sm:hidden space-y-3">
+              {paginatedEmployees.map((emp: any) => (
+                <div
+                  key={emp.id}
+                  className={`p-3 rounded-lg border ${emp.isDependent ? 'bg-gray-50 ml-4 border-gray-200' : 'bg-white border-gray-200'
+                    }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        {emp.isDependent && <span className="text-gray-400">└</span>}
+                        <p className="font-medium text-sm">{emp.nome}</p>
+                        {isNew(emp.createdAt) && (
+                          <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 text-green-700 rounded-full animate-pulse">
+                            NOVO
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500">{formatCPF(emp.cpf)}</p>
+                      {emp.tipo === 'dependente' && emp.titular && (
+                        <p className="text-xs text-gray-400">Dep. de: {emp.titular.nome}</p>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500">{formatCPF(emp.cpf)}</p>
-                    {emp.tipo === 'dependente' && emp.titular && (
-                      <p className="text-xs text-gray-400">Dep. de: {emp.titular.nome}</p>
-                    )}
-                  </div>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      emp.tipo === 'titular'
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${emp.tipo === 'titular'
                         ? 'bg-[#00552B]/10 text-[#00552B]'
                         : 'bg-purple-100 text-purple-700'
-                    }`}
-                  >
-                    {emp.tipo === 'titular' ? 'Titular' : 'Dep.'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center mt-2">
-                  <div className="text-xs text-gray-500">
-                    <span className="text-gray-400">{emp.company?.name}</span>
-                    <span className="mx-1">•</span>
-                    {formatDateTime(emp.createdAt).split(' ')[0]}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => {
-                        setEditingEmployee(emp);
-                        setSelectedCompanyForForm(emp.company?.id || '');
-                        setFormOpen(true);
-                      }}
-                      className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                        }`}
                     >
-                      <Edit2 className="w-4 h-4 text-gray-600" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEmployeeToDelete(emp);
-                        setDeleteDialogOpen(true);
-                      }}
-                      className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </button>
+                      {emp.tipo === 'titular' ? 'Titular' : 'Dep.'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center mt-2">
+                    <div className="text-xs text-gray-500">
+                      <span className="text-gray-400">{emp.company?.name}</span>
+                      <span className="mx-1">•</span>
+                      {formatDateTime(emp.createdAt).split(' ')[0]}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setEditingEmployee(emp);
+                          setSelectedCompanyForForm(emp.company?.id || '');
+                          setFormOpen(true);
+                        }}
+                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <Edit2 className="w-4 h-4 text-gray-600" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEmployeeToDelete(emp);
+                          setDeleteDialogOpen(true);
+                        }}
+                        className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-            {organizedEmployees.length === 0 && (
-              <div className="py-8 text-center">
-                <Users className="w-10 h-10 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 text-sm">Nenhum colaborador encontrado</p>
-              </div>
-            )}
-          </div>
+              ))}
+              {paginatedEmployees.length === 0 && (
+                <div className="py-8 text-center">
+                  <Users className="w-10 h-10 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 text-sm">Nenhum colaborador encontrado</p>
+                </div>
+              )}
+            </div>
 
-          {/* Desktop: Table view */}
-          <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Nome</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">CPF</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Empresa</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Tipo</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Incluído em</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {organizedEmployees.map((emp: any) => (
-                  <tr
-                    key={emp.id}
-                    className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                      emp.isDependent ? 'bg-gray-50/50' : ''
-                    }`}
-                  >
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        {emp.isDependent && (
-                          <span className="text-gray-400 ml-4">└</span>
-                        )}
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{emp.nome}</p>
-                            {isNew(emp.createdAt) && (
-                              <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full animate-pulse">
-                                NOVO
-                              </span>
+            {/* Desktop: Table view */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50 border-b">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Nome</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">CPF</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Empresa</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Tipo</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Incluído em</th>
+                    <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedEmployees.map((emp: any) => (
+                    <tr
+                      key={emp.id}
+                      className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${emp.isDependent ? 'bg-gray-50/50' : ''
+                        }`}
+                    >
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          {emp.isDependent && (
+                            <span className="text-gray-400 ml-4">└</span>
+                          )}
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{emp.nome}</p>
+                              {isNew(emp.createdAt) && (
+                                <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full animate-pulse">
+                                  NOVO
+                                </span>
+                              )}
+                            </div>
+                            {emp.tipo === 'dependente' && emp.titular && (
+                              <p className="text-xs text-gray-500">Dependente de: {emp.titular.nome}</p>
                             )}
                           </div>
-                          {emp.tipo === 'dependente' && emp.titular && (
-                            <p className="text-xs text-gray-500">Dependente de: {emp.titular.nome}</p>
-                          )}
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">{formatCPF(emp.cpf)}</td>
-                    <td className="py-3 px-4 text-gray-600">{emp.company?.name}</td>
-                    <td className="py-3 px-4 text-center">
-                      <span
-                        className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                          emp.tipo === 'titular'
+                      </td>
+                      <td className="py-3 px-4 text-gray-600">{formatCPF(emp.cpf)}</td>
+                      <td className="py-3 px-4 text-gray-600">{emp.company?.name}</td>
+                      <td className="py-3 px-4 text-center">
+                        <span
+                          className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${emp.tipo === 'titular'
                             ? 'bg-[#00552B]/10 text-[#00552B]'
                             : 'bg-purple-100 text-purple-700'
-                        }`}
-                      >
-                        {emp.tipo === 'titular' ? 'Titular' : 'Dependente'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">
-                      <div className="flex items-center gap-1 text-sm">
-                        <Clock className="w-3 h-3 text-gray-400" />
-                        {formatDateTime(emp.createdAt)}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => {
-                            setEditingEmployee(emp);
-                            setSelectedCompanyForForm(emp.company?.id || '');
-                            setFormOpen(true);
-                          }}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="Editar"
+                            }`}
                         >
-                          <Edit2 className="w-4 h-4 text-gray-600" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEmployeeToDelete(emp);
-                            setDeleteDialogOpen(true);
-                          }}
-                          className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Remover"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {organizedEmployees.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center">
-                      <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500">Nenhum colaborador encontrado</p>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                          {emp.tipo === 'titular' ? 'Titular' : 'Dependente'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-gray-600">
+                        <div className="flex items-center gap-1 text-sm">
+                          <Clock className="w-3 h-3 text-gray-400" />
+                          {formatDateTime(emp.createdAt)}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => {
+                              setEditingEmployee(emp);
+                              setSelectedCompanyForForm(emp.company?.id || '');
+                              setFormOpen(true);
+                            }}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="Editar"
+                          >
+                            <Edit2 className="w-4 h-4 text-gray-600" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEmployeeToDelete(emp);
+                              setDeleteDialogOpen(true);
+                            }}
+                            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Remover"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {paginatedEmployees.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center">
+                        <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500">Nenhum colaborador encontrado</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+
+          {/* Pagination Controls para Colaboradores Ativos */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm gap-4">
+              <p className="text-sm text-gray-600">
+                Mostrando <span className="font-semibold">{((currentPage - 1) * itemsPerPage) + 1}</span> a <span className="font-semibold">{Math.min(currentPage * itemsPerPage, organizedEmployees.length)}</span> de <span className="font-semibold">{organizedEmployees.length}</span>
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Anterior
+                </button>
+                <div className="flex items-center px-4 font-medium text-sm text-gray-700 bg-gray-50 rounded-lg">
+                  Página {currentPage} de {totalPages}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Próxima
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Inactive Employees Section */}
@@ -716,7 +779,7 @@ export default function ColaboradoresAdminPage() {
             <div className="mt-4">
               {/* Mobile: Cards view for inactive */}
               <div className="sm:hidden space-y-3">
-                {organizedInactive.map((emp: any) => (
+                {paginatedInactive.map((emp: any) => (
                   <div key={emp.id} className="p-3 rounded-lg bg-red-50 border border-red-100">
                     <div className="flex justify-between items-start mb-2">
                       <div>
@@ -733,11 +796,10 @@ export default function ColaboradoresAdminPage() {
                         {emp.deletedAt && formatDateTime(emp.deletedAt).split(' ')[0]}
                       </div>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          emp.deletedBy === 'admin'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-orange-100 text-orange-700'
-                        }`}
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${emp.deletedBy === 'admin'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-orange-100 text-orange-700'
+                          }`}
                       >
                         {emp.deletedBy === 'admin' ? 'Admin' : 'Empresa'}
                       </span>
@@ -760,7 +822,7 @@ export default function ColaboradoresAdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {organizedInactive.map((emp: any) => (
+                    {paginatedInactive.map((emp: any) => (
                       <tr key={emp.id} className="border-b border-gray-100 hover:bg-red-50/50 transition-colors">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
@@ -794,11 +856,10 @@ export default function ColaboradoresAdminPage() {
                         </td>
                         <td className="py-3 px-4 text-center">
                           <span
-                            className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                              emp.deletedBy === 'admin'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-orange-100 text-orange-700'
-                            }`}
+                            className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${emp.deletedBy === 'admin'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-orange-100 text-orange-700'
+                              }`}
                           >
                             {emp.deletedBy === 'admin' ? 'Administrador' : 'Empresa'}
                           </span>
@@ -808,6 +869,34 @@ export default function ColaboradoresAdminPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination Controls para Colaboradores Inativos */}
+              {totalInactivePages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between mt-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm gap-4">
+                  <p className="text-sm text-gray-600">
+                    Mostrando <span className="font-semibold">{((currentInactivePage - 1) * itemsPerPage) + 1}</span> a <span className="font-semibold">{Math.min(currentInactivePage * itemsPerPage, organizedInactive.length)}</span> de <span className="font-semibold">{organizedInactive.length}</span>
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setCurrentInactivePage(p => Math.max(1, p - 1))}
+                      disabled={currentInactivePage === 1}
+                      className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Anterior
+                    </button>
+                    <div className="flex items-center px-4 font-medium text-sm text-gray-700 bg-gray-50 rounded-lg">
+                      Página {currentInactivePage} de {totalInactivePages}
+                    </div>
+                    <button
+                      onClick={() => setCurrentInactivePage(p => Math.min(totalInactivePages, p + 1))}
+                      disabled={currentInactivePage === totalInactivePages}
+                      className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Próxima
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

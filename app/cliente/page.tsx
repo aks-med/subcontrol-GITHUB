@@ -50,7 +50,7 @@ export default function ClientePage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
-  
+
   // Filtro de período
   const [filterType, setFilterType] = useState<'all' | 'month' | 'custom'>('all');
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -60,6 +60,10 @@ export default function ClientePage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showFilterOptions, setShowFilterOptions] = useState(false);
+  const [sortOption, setSortOption] = useState('name_asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [currentInactivePage, setCurrentInactivePage] = useState(1);
+  const itemsPerPage = 50;
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -94,12 +98,12 @@ export default function ClientePage() {
         fetch('/api/employees'),
         fetch('/api/employees?includeInactive=true')
       ]);
-      
+
       if (activeRes.ok) {
         const data = await activeRes.json();
         setEmployees(data.filter((e: Employee) => e.active));
       }
-      
+
       if (inactiveRes.ok) {
         const data = await inactiveRes.json();
         setInactiveEmployees(data.filter((e: Employee) => !e.active));
@@ -113,7 +117,7 @@ export default function ClientePage() {
 
   const handleDelete = async () => {
     if (!employeeToDelete) return;
-    
+
     setDeleteLoading(true);
     try {
       const response = await fetch(`/api/employees/${employeeToDelete.id}`, {
@@ -138,14 +142,14 @@ export default function ClientePage() {
   // Filtrar por período
   const filterByPeriod = (emp: Employee) => {
     if (filterType === 'all') return true;
-    
+
     const createdDate = new Date(emp.createdAt);
-    
+
     if (filterType === 'month' && selectedMonth) {
       const [year, month] = selectedMonth.split('-').map(Number);
       return createdDate.getFullYear() === year && createdDate.getMonth() === month - 1;
     }
-    
+
     if (filterType === 'custom' && startDate && endDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
@@ -153,25 +157,64 @@ export default function ClientePage() {
       end.setHours(23, 59, 59, 999);
       return createdDate >= start && createdDate <= end;
     }
-    
+
     return true;
   };
 
   const filteredEmployees = employees.filter(
     (emp) =>
       (emp.nome?.toLowerCase().includes(search.toLowerCase()) ||
-      emp.cpf?.includes(search.replace(/\D/g, ''))) &&
+        emp.cpf?.includes(search.replace(/\D/g, ''))) &&
       filterByPeriod(emp)
   );
 
   const titulares = filteredEmployees.filter((e) => e.tipo === 'titular');
   const dependentes = filteredEmployees.filter((e) => e.tipo === 'dependente');
 
+  titulares.sort((a, b) => {
+    if (sortOption === 'name_asc') return a.nome.localeCompare(b.nome);
+    if (sortOption === 'name_desc') return b.nome.localeCompare(a.nome);
+    if (sortOption === 'date_desc') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    if (sortOption === 'date_asc') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return 0;
+  });
+
+  const totalPages = Math.ceil(titulares.length / itemsPerPage);
+  const paginatedTitulares = titulares.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const filteredInactive = inactiveEmployees.filter(
+    (emp) =>
+      emp.nome?.toLowerCase().includes(search.toLowerCase()) ||
+      emp.cpf?.includes(search.replace(/\D/g, ''))
+  );
+
+  filteredInactive.sort((a, b) => {
+    if (sortOption === 'name_asc') return a.nome.localeCompare(b.nome);
+    if (sortOption === 'name_desc') return b.nome.localeCompare(a.nome);
+    if (sortOption === 'date_desc') return new Date(b.deletedAt || b.createdAt).getTime() - new Date(a.deletedAt || a.createdAt).getTime();
+    if (sortOption === 'date_asc') return new Date(a.deletedAt || a.createdAt).getTime() - new Date(b.deletedAt || b.createdAt).getTime();
+    return 0;
+  });
+
+  const totalInactivePages = Math.ceil(filteredInactive.length / itemsPerPage);
+  const paginatedInactive = filteredInactive.slice(
+    (currentInactivePage - 1) * itemsPerPage,
+    currentInactivePage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setCurrentInactivePage(1);
+  }, [search, filterType, selectedMonth, startDate, endDate, sortOption]);
+
   // Calcular estatísticas do mês atual
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
-  
+
   const employeesThisMonth = employees.filter(e => {
     const created = new Date(e.createdAt);
     return created.getMonth() === currentMonth && created.getFullYear() === currentYear;
@@ -225,14 +268,14 @@ export default function ClientePage() {
     const filterByPeriodForMovimentacao = (dateStr: string | null) => {
       if (filterType === 'all') return true;
       if (!dateStr) return false;
-      
+
       const date = new Date(dateStr);
-      
+
       if (filterType === 'month' && selectedMonth) {
         const [year, month] = selectedMonth.split('-').map(Number);
         return date.getFullYear() === year && date.getMonth() === month - 1;
       }
-      
+
       if (filterType === 'custom' && startDate && endDate) {
         const start = new Date(startDate);
         start.setHours(0, 0, 0, 0);
@@ -240,7 +283,7 @@ export default function ClientePage() {
         end.setHours(23, 59, 59, 999);
         return date >= start && date <= end;
       }
-      
+
       return true;
     };
 
@@ -266,7 +309,7 @@ export default function ClientePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <ClientHeader />
-      
+
       <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
           <div>
@@ -392,17 +435,32 @@ export default function ClientePage() {
 
         {/* Search and Filters */}
         <div className="card mb-6">
-          <div className="flex flex-col gap-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar por nome ou CPF..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="input-field pl-12"
-              />
+          <div className="flex flex-col gap-4 mb-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Search */}
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nome ou CPF..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="input-field pl-12"
+                />
+              </div>
+              {/* Sort Option */}
+              <div className="w-full sm:w-64">
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="name_asc">Ordem Alfabética (A-Z)</option>
+                  <option value="name_desc">Ordem Alfabética (Z-A)</option>
+                  <option value="date_desc">Data de Inclusão (Recentes)</option>
+                  <option value="date_asc">Data de Inclusão (Antigos)</option>
+                </select>
+              </div>
             </div>
 
             {/* Period Filter Toggle */}
@@ -427,31 +485,28 @@ export default function ClientePage() {
                   <div className="flex flex-wrap gap-2 mb-4">
                     <button
                       onClick={() => setFilterType('all')}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        filterType === 'all'
-                          ? 'bg-[#00552B] text-white'
-                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterType === 'all'
+                        ? 'bg-[#00552B] text-white'
+                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
                     >
                       Todos
                     </button>
                     <button
                       onClick={() => setFilterType('month')}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        filterType === 'month'
-                          ? 'bg-[#00552B] text-white'
-                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterType === 'month'
+                        ? 'bg-[#00552B] text-white'
+                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
                     >
                       Por Mês
                     </button>
                     <button
                       onClick={() => setFilterType('custom')}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        filterType === 'custom'
-                          ? 'bg-[#00552B] text-white'
-                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterType === 'custom'
+                        ? 'bg-[#00552B] text-white'
+                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
                     >
                       Período Personalizado
                     </button>
@@ -552,8 +607,8 @@ export default function ClientePage() {
               )}
             </div>
           ) : (
-            <div className="space-y-4">
-              {titulares.map((titular) => {
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+              {paginatedTitulares.map((titular) => {
                 const { dependentes: deps } = getTitularWithDependentes(titular);
                 return (
                   <div key={titular.id} className="border border-gray-200 rounded-xl overflow-hidden">
@@ -700,8 +755,36 @@ export default function ClientePage() {
           )}
         </div>
 
+        {/* Pagination Controls para Titulares Ativos (Client) */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm gap-4">
+            <p className="text-sm text-gray-600">
+              Mostrando <span className="font-semibold">{((currentPage - 1) * itemsPerPage) + 1}</span> a <span className="font-semibold">{Math.min(currentPage * itemsPerPage, titulares.length)}</span> de <span className="font-semibold">{titulares.length}</span> titulares
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Anterior
+              </button>
+              <div className="flex items-center px-4 font-medium text-sm text-gray-700 bg-gray-50 rounded-lg">
+                Página {currentPage} de {totalPages}
+              </div>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Inactive Employees Section */}
-        {inactiveEmployees.length > 0 && (
+        {filteredInactive.length > 0 && (
           <div className="card overflow-hidden">
             <button
               onClick={() => setShowInactive(!showInactive)}
@@ -709,7 +792,7 @@ export default function ClientePage() {
             >
               <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
                 <UserX className="w-5 h-5 text-red-500" />
-                Colaboradores Excluídos ({inactiveEmployees.length})
+                Colaboradores Excluídos ({filteredInactive.length})
               </h3>
               {showInactive ? (
                 <ChevronUp className="w-5 h-5 text-gray-400" />
@@ -719,8 +802,8 @@ export default function ClientePage() {
             </button>
 
             {showInactive && (
-              <div className="mt-4 space-y-2">
-                {inactiveEmployees.map((emp) => (
+              <div className="mt-4 space-y-2 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                {paginatedInactive.map((emp) => (
                   <div key={emp.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-red-50 rounded-lg gap-2">
                     <div>
                       <p className="font-medium text-gray-500 line-through text-sm">{emp.nome}</p>
@@ -735,11 +818,10 @@ export default function ClientePage() {
                         </p>
                       )}
                       <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
-                          emp.deletedBy === 'admin'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-orange-100 text-orange-700'
-                        }`}
+                        className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${emp.deletedBy === 'admin'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-orange-100 text-orange-700'
+                          }`}
                       >
                         {emp.deletedBy === 'admin' ? 'Pelo Admin' : 'Pela Empresa'}
                       </span>
@@ -748,9 +830,38 @@ export default function ClientePage() {
                 ))}
               </div>
             )}
+
+            {/* Pagination Controls para Colaboradores Inativos */}
+            {showInactive && totalInactivePages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between mt-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm gap-4">
+                <p className="text-sm text-gray-600">
+                  Mostrando <span className="font-semibold">{((currentInactivePage - 1) * itemsPerPage) + 1}</span> a <span className="font-semibold">{Math.min(currentInactivePage * itemsPerPage, filteredInactive.length)}</span> de <span className="font-semibold">{filteredInactive.length}</span>
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentInactivePage(p => Math.max(1, p - 1))}
+                    disabled={currentInactivePage === 1}
+                    className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Anterior
+                  </button>
+                  <div className="flex items-center px-4 font-medium text-sm text-gray-700 bg-gray-50 rounded-lg">
+                    Página {currentInactivePage} de {totalInactivePages}
+                  </div>
+                  <button
+                    onClick={() => setCurrentInactivePage(p => Math.min(totalInactivePages, p + 1))}
+                    disabled={currentInactivePage === totalInactivePages}
+                    className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Próxima
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </main>
+        )
+        }
+      </main >
 
       <EmployeeForm
         isOpen={formOpen}
@@ -780,6 +891,6 @@ export default function ClientePage() {
         message={`Tem certeza que deseja remover ${employeeToDelete?.nome}? Esta ação não pode ser desfeita.`}
         loading={deleteLoading}
       />
-    </div>
+    </div >
   );
 }

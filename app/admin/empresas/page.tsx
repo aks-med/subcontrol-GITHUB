@@ -25,6 +25,10 @@ export default function EmpresasPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [sortOption, setSortOption] = useState('name_asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
   const [formOpen, setFormOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -59,9 +63,13 @@ export default function EmpresasPage() {
     }
   };
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, sortOption]);
+
   const handleDelete = async () => {
     if (!companyToDelete) return;
-    
+
     setDeleteLoading(true);
     try {
       const response = await fetch(`/api/companies/${companyToDelete.id}`, {
@@ -83,10 +91,22 @@ export default function EmpresasPage() {
     }
   };
 
-  const filteredCompanies = companies.filter(
+  let processedCompanies = companies.filter(
     (company) =>
       company.name?.toLowerCase().includes(search.toLowerCase()) ||
       company.cnpj?.includes(search.replace(/\D/g, ''))
+  );
+
+  processedCompanies.sort((a, b) => {
+    if (sortOption === 'name_asc') return a.name.localeCompare(b.name);
+    if (sortOption === 'name_desc') return b.name.localeCompare(a.name);
+    return 0;
+  });
+
+  const totalPages = Math.ceil(processedCompanies.length / itemsPerPage);
+  const paginatedCompanies = processedCompanies.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   if (status === 'loading' || loading) {
@@ -104,7 +124,7 @@ export default function EmpresasPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <AdminHeader />
-      
+
       <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
           <div>
@@ -123,9 +143,9 @@ export default function EmpresasPage() {
           </button>
         </div>
 
-        {/* Search */}
-        <div className="card mb-6">
-          <div className="relative">
+        {/* Search & Sort */}
+        <div className="card mb-6 flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
@@ -135,11 +155,21 @@ export default function EmpresasPage() {
               className="input-field pl-12"
             />
           </div>
+          <div className="w-full sm:w-64">
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value)}
+              className="input-field"
+            >
+              <option value="name_asc">Ordem Alfabética (A-Z)</option>
+              <option value="name_desc">Ordem Alfabética (Z-A)</option>
+            </select>
+          </div>
         </div>
 
         {/* Companies List */}
-        <div className="grid gap-3 sm:gap-4">
-          {filteredCompanies.map((company) => (
+        <div className="grid gap-3 sm:gap-4 max-h-[600px] overflow-y-auto pr-2 pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+          {paginatedCompanies.map((company) => (
             <div
               key={company.id}
               className="card hover:shadow-lg hover:border-[#00552B] transition-all duration-200 animate-fadeIn cursor-pointer"
@@ -178,7 +208,7 @@ export default function EmpresasPage() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => {
@@ -207,13 +237,41 @@ export default function EmpresasPage() {
             </div>
           ))}
 
-          {filteredCompanies.length === 0 && (
+          {paginatedCompanies.length === 0 && (
             <div className="card text-center py-8 sm:py-12">
               <Users className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500">Nenhuma empresa encontrada</p>
             </div>
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between mt-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm gap-4">
+            <p className="text-sm text-gray-600">
+              Mostrando <span className="font-semibold">{((currentPage - 1) * itemsPerPage) + 1}</span> a <span className="font-semibold">{Math.min(currentPage * itemsPerPage, processedCompanies.length)}</span> de <span className="font-semibold">{processedCompanies.length}</span> empresas
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Anterior
+              </button>
+              <div className="flex items-center px-4 font-medium text-sm text-gray-700 bg-gray-50 rounded-lg">
+                Página {currentPage} de {totalPages}
+              </div>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
       </main>
 
       <CompanyForm

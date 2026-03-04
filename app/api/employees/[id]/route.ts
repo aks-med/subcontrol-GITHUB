@@ -70,8 +70,8 @@ async function sendNotification(type: 'add' | 'remove', company: any, count: num
       </div>
     `;
 
-    const notificationId = type === 'add' 
-      ? process.env.NOTIF_ID_INCLUSO_DE_COLABORADORES 
+    const notificationId = type === 'add'
+      ? process.env.NOTIF_ID_INCLUSO_DE_COLABORADORES
       : process.env.NOTIF_ID_EXCLUSO_DE_COLABORADORES;
 
     await fetch('https://apps.abacus.ai/api/sendNotificationEmail', {
@@ -131,8 +131,8 @@ export async function PUT(
     if (tipo === 'dependente' && titularId) {
       // Verificar limite de 3 dependentes por titular
       const dependentesCount = await prisma.employee.count({
-        where: { 
-          titularId, 
+        where: {
+          titularId,
           active: true,
           id: { not: params.id }, // Excluir o próprio funcionário da contagem
         },
@@ -194,14 +194,27 @@ export async function DELETE(
     // Determinar quem excluiu
     const deletedBy = userRole === 'admin' ? 'admin' : 'company';
 
+    // Marcar o próprio colaborador como inativo
     await prisma.employee.update({
       where: { id: params.id },
-      data: { 
+      data: {
         active: false,
         deletedAt: new Date(),
         deletedBy,
       },
     });
+
+    // Se for um titular, também inativar todos os dependentes associados
+    if (employee.tipo === 'titular') {
+      await prisma.employee.updateMany({
+        where: { titularId: params.id },
+        data: {
+          active: false,
+          deletedAt: new Date(),
+          deletedBy,
+        },
+      });
+    }
 
     const totalActiveEmployees = await prisma.employee.count({
       where: { companyId: employee.companyId, active: true },

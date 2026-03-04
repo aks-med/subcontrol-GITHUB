@@ -13,8 +13,8 @@ export const metadata: Metadata = {
   title: 'Akius Med - Gestão de Benefícios',
   description: 'Sistema de gestão de colaboradores e benefícios corporativos',
   icons: {
-    icon: '/favicon.svg',
-    shortcut: '/favicon.svg',
+    icon: '/icone.png',
+    shortcut: '/icone.png',
   },
   openGraph: {
     title: 'Akius Med - Gestão de Benefícios',
