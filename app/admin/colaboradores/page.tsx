@@ -54,7 +54,7 @@ export default function ColaboradoresAdminPage() {
   const [sortOption, setSortOption] = useState('name_asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [currentInactivePage, setCurrentInactivePage] = useState(1);
-  const itemsPerPage = 50;
+  const itemsPerPage = 10;
   const [showInactive, setShowInactive] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
@@ -593,7 +593,16 @@ export default function ColaboradoresAdminPage() {
                       {emp.tipo === 'titular' ? 'Titular' : 'Dep.'}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center mt-2">
+                  <div className="flex flex-col mt-2 pt-2 border-t border-gray-100 gap-1">
+                    <div className="text-xs text-gray-600">
+                      <span className="font-medium">Nasc:</span> {emp.dataNascimento ? new Date(emp.dataNascimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'N/I'} • <span className="font-medium">Gênero:</span> {emp.genero || 'N/I'}
+                    </div>
+                    <div className="text-xs text-gray-600 flex flex-col gap-0.5">
+                      <span><span className="font-medium">E-mail:</span> {emp.email || 'N/I'}</span>
+                      <span><span className="font-medium">Tel:</span> {emp.telefone || 'N/I'}</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
                     <div className="text-xs text-gray-500">
                       <span className="text-gray-400">{emp.company?.name}</span>
                       <span className="mx-1">•</span>
@@ -637,7 +646,8 @@ export default function ColaboradoresAdminPage() {
                 <thead>
                   <tr className="bg-gray-50 border-b">
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Nome</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">CPF</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Documento / Pessoal</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Contato</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Empresa</th>
                     <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Tipo</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Incluído em</th>
@@ -671,7 +681,14 @@ export default function ColaboradoresAdminPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-gray-600">{formatCPF(emp.cpf)}</td>
+                      <td className="py-3 px-4">
+                        <p className="text-gray-600">{formatCPF(emp.cpf)}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{emp.dataNascimento ? new Date(emp.dataNascimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'N/I'} • {emp.genero || 'N/I'}</p>
+                      </td>
+                      <td className="py-3 px-4">
+                        <p className="text-sm text-gray-600">{emp.email || 'S/ E-mail'}</p>
+                        <p className="text-xs text-gray-400">{emp.telefone || 'S/ Tel.'}</p>
+                      </td>
                       <td className="py-3 px-4 text-gray-600">{emp.company?.name}</td>
                       <td className="py-3 px-4 text-center">
                         <span
@@ -791,7 +808,16 @@ export default function ColaboradoresAdminPage() {
                         {emp.tipo === 'titular' ? 'Titular' : 'Dep.'}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center mt-2">
+                    <div className="flex flex-col mt-2 pt-2 border-t border-red-100 gap-1">
+                      <div className="text-xs text-gray-500">
+                        <span className="font-medium">Nasc:</span> {emp.dataNascimento ? new Date(emp.dataNascimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'N/I'} • <span className="font-medium">Gênero:</span> {emp.genero || 'N/I'}
+                      </div>
+                      <div className="text-xs text-gray-500 flex flex-col gap-0.5">
+                        <span><span className="font-medium">E-mail:</span> {emp.email || 'N/I'}</span>
+                        <span><span className="font-medium">Tel:</span> {emp.telefone || 'N/I'}</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-red-100">
                       <div className="text-xs text-gray-500">
                         {emp.deletedAt && formatDateTime(emp.deletedAt).split(' ')[0]}
                       </div>
@@ -814,7 +840,8 @@ export default function ColaboradoresAdminPage() {
                   <thead>
                     <tr className="bg-red-50 border-b">
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Nome</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">CPF</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Documento / Pessoal</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Contato</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Empresa</th>
                       <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Tipo</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Excluído em</th>
@@ -837,7 +864,14 @@ export default function ColaboradoresAdminPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-gray-400">{formatCPF(emp.cpf)}</td>
+                        <td className="py-3 px-4">
+                          <p className="text-gray-400">{formatCPF(emp.cpf)}</p>
+                          <p className="text-xs text-gray-400/80 mt-0.5">{emp.dataNascimento ? new Date(emp.dataNascimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'N/I'} • {emp.genero || 'N/I'}</p>
+                        </td>
+                        <td className="py-3 px-4">
+                          <p className="text-sm text-gray-400">{emp.email || 'S/ E-mail'}</p>
+                          <p className="text-xs text-gray-400/80">{emp.telefone || 'S/ Tel.'}</p>
+                        </td>
                         <td className="py-3 px-4 text-gray-400">{emp.company?.name}</td>
                         <td className="py-3 px-4 text-center">
                           <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">

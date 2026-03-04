@@ -63,7 +63,7 @@ export default function ClientePage() {
   const [sortOption, setSortOption] = useState('name_asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [currentInactivePage, setCurrentInactivePage] = useState(1);
-  const itemsPerPage = 50;
+  const itemsPerPage = 10;
 
   useEffect(() => {
     if (status === 'unauthenticated') {
